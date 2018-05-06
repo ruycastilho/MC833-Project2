@@ -17,7 +17,9 @@
 
 #define PORT "4001" 
 
-struct timeval tv1, tv2;
+struct timeval tv, tv1, tv2;
+struct addrinfo *p;
+struct sockaddr_storage their_addr; // server's address information
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa) {
@@ -27,69 +29,54 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int repeat_send(int fd, const void *buffer, int size) {
-    char *string = (char*)malloc(sizeof(char)*(size + HEADER_LENGTH));
-    char *input = (char*) buffer;
-
-    sprintf(string, "%3d", size);
-    memcpy(string+HEADER_LENGTH, buffer, size);
-
-    size += HEADER_LENGTH;
-
-    while (size > 0)
-    {
-        int counter = send(fd, string, size, 0);
-
-        if (counter < 1)
-            return -1;
-
-        string += counter;
-        size -= counter;
-    }
-
-    return 1;
-}
-
-
 int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
-    char buf_header[HEADER_LENGTH];
+    int addr_len = sizeof their_addr;
+    int numbytes, n, rv;
+    char buf[DATAGRAM_SIZE];
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(sockfd, &readfds);
+    n = sockfd+1;
 
-    int numbytes;
-    if ( recv(sockfd, buf_header, sizeof(buf_header), MSG_WAITALL) == -1 ) {
-        perror("recv");
-        exit(1);
-    }
+    tv.tv_sec = TV_SECONDS;
+    tv.tv_usec = TV_USECONDS;
 
-    int size = atoi(buf_header);
-
-    int lenght = 0;
 
     do {
-        numbytes = recv(sockfd, recv_buffer + lenght, size, 0);
-
-        if (numbytes < 1)
-            return -1;
-        
-        lenght += numbytes;
-        size -= numbytes;
-    } while(lenght < size && lenght < recv_buffer_size);
+        rv = select(n, &readfds, NULL, NULL, &tv);
+        if (rv == -1) {
+            perror("select"); // error occurred in select()
+        }
+    } while (rv != -1 && rv != 0);
 
 
-    return lenght;
-
-}
-
-
-int send_ack(int sockfd) {
-
-    char ack[] = "ack";
-    if (repeat_send(sockfd, ack, sizeof(ack)) == -1) {
-        perror("send");
+    if ((numbytes = recvfrom(sockfd, buf, sizeof(DATAGRAM_SIZE) , 0,
+        (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+        perror("recvfrom");
         exit(1);
     }
-    return 1;
+
+    memcpy(recv_buffer, buf, recv_buffer_size);
+
+    return numbytes;
+
 }
 
+int repeat_send(int fd, const void *buffer, int size) {
+    char datagram[DATAGRAM_SIZE];
+    int numbytes;
+
+    memcpy(datagram, buffer, size);
+
+    while ((numbytes = sendto(fd, datagram, sizeof(datagram), 0,
+             p->ai_addr, p->ai_addrlen)) == -1) {
+        perror("talker: sendto");
+        exit(1);
+    }
+
+
+    return 1;
+}
 
 void choose_opt(int sockfd) {
     char buf[MAXDATASIZE];
@@ -97,8 +84,6 @@ void choose_opt(int sockfd) {
     char choice[2];
 
     do {
-        send_ack(sockfd);
-
         // receive login menu
         numbytes = repeat_receive(sockfd, buf, sizeof(buf));
         if ( numbytes == -1) {
@@ -133,8 +118,6 @@ void choose_opt(int sockfd) {
 user* input_user_and_pass (int sockfd) {
     char buf[MAXDATASIZE];
     int numbytes;
-
-    send_ack(sockfd);
 
     numbytes = repeat_receive(sockfd, buf, sizeof(buf));
     if (numbytes == -1) {
@@ -172,8 +155,6 @@ user* input_user_and_pass (int sockfd) {
         exit(1);
     }
 
-    // send message acknowledgement
-    send_ack(sockfd);
     free(new_user);
 
     user* client = (user*)malloc((sizeof(user)));
@@ -184,10 +165,6 @@ user* input_user_and_pass (int sockfd) {
             exit(1);
 
         }
-
-        // send message acknowledgement
-        send_ack(sockfd);
-
 
     }
 
@@ -245,8 +222,6 @@ int interface_codigo(int sockfd) {
         exit(1);
     } 
 
-    send_ack(sockfd);
-
     return status;
 
 }
@@ -269,7 +244,6 @@ void interface_ementa(int sockfd) {
 
     printf("Tempo total da operação: %.2f usecs\n", (float)(tv2.tv_usec - tv1.tv_usec));
 
-    send_ack(sockfd);
     free(received_course);
 
 }
@@ -324,8 +298,6 @@ void interface_todas_infos(int sockfd) {
         exit(1);
     } 
 
-    send_ack(sockfd);
-
     if (status) {
 
         // receive the status
@@ -334,8 +306,6 @@ void interface_todas_infos(int sockfd) {
             perror("recv");
             exit(1);
         } 
-
-        send_ack(sockfd);
 
         while (status) {
 
@@ -350,8 +320,6 @@ void interface_todas_infos(int sockfd) {
                     received_course->room, received_course->schedule, received_course->description,
                     received_course->professor, received_course->comment);
 
-            send_ack(sockfd);
-
             // receive the status
             numbytes = repeat_receive(sockfd, &status, sizeof(int));
             if (numbytes == -1) {
@@ -359,8 +327,6 @@ void interface_todas_infos(int sockfd) {
                 exit(1);
             } 
             
-            send_ack(sockfd);
-
         }
         gettimeofday(&tv2, NULL);
         printf("Tempo total da operação: %.2f usecs\n", (float)(tv2.tv_usec - tv1.tv_usec));
@@ -377,8 +343,6 @@ void interface_todas_infos(int sockfd) {
 
         buf[numbytes] = '\0';
         printf("%s",buf);
-
-        send_ack(sockfd);
 
     }
 
@@ -397,9 +361,6 @@ void interface_cod_titulos(int sockfd) {
         exit(1);
     } 
 
-    send_ack(sockfd);
-
-
     if (status) {
 
         // receive the status
@@ -408,9 +369,6 @@ void interface_cod_titulos(int sockfd) {
             perror("recv");
             exit(1);
         } 
-
-        send_ack(sockfd);
-
 
         while (status) {
 
@@ -424,16 +382,12 @@ void interface_cod_titulos(int sockfd) {
                     received_course->code, received_course->name);
 
 
-            send_ack(sockfd);
-
             // receive the status
             numbytes = repeat_receive(sockfd, &status, sizeof(int));
             if (numbytes == -1) {
                 perror("recv");
                 exit(1);
             } 
-
-            send_ack(sockfd);
 
         }
 
@@ -450,8 +404,6 @@ void interface_cod_titulos(int sockfd) {
 
         buf[numbytes] = '\0';
         printf("%s",buf);
-
-        send_ack(sockfd);
 
 
     }
@@ -525,8 +477,6 @@ void interface_esc_com(int sockfd) {
 
         printf("Tempo total da operação: %.2f usecs\n", (float)(tv2.tv_usec - tv1.tv_usec));
 
-        send_ack(sockfd);
-
     }
     else {
         numbytes = repeat_receive(sockfd, buf, sizeof(buf));
@@ -561,8 +511,6 @@ void interface(int sockfd) {
 
 
     while (1) {
-
-        send_ack(sockfd);
 
         // receive options menu
         numbytes = repeat_receive(sockfd, buf, sizeof(buf));
@@ -628,36 +576,28 @@ void interface(int sockfd) {
 
 }
 
-int main(int argc, char *argv[]) {
-    int sockfd, numbytes;
-    struct addrinfo hints, *servinfo, *p;
+int main(int argc, char *argv[])
+{
+    int sockfd;
+    struct addrinfo hints, *servinfo;
     int rv;
-    char s[INET6_ADDRSTRLEN];
-    
-    if (argc != 2) {
-        fprintf(stderr,"usage: client hostname\n");
-        exit(1);
-    }
+    int numbytes;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    
+    hints.ai_socktype = SOCK_DGRAM;
+
+
     if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
     }
 
-    // loop through all the results and connect to the first we can
+    // loop through all the results and make a socket
     for(p = servinfo; p != NULL; p = p->ai_next) {
         if ((sockfd = socket(p->ai_family, p->ai_socktype,
-            p->ai_protocol)) == -1) {
-            perror("client: socket");
-            continue;
-        }
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("client: connect");
+                p->ai_protocol)) == -1) {
+            perror("talker: socket");
             continue;
         }
 
@@ -665,17 +605,22 @@ int main(int argc, char *argv[]) {
     }
 
     if (p == NULL) {
-        fprintf(stderr, "client: failed to connect\n");
+        fprintf(stderr, "talker: failed to create socket\n");
         return 2;
     }
 
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-    s, sizeof s);
+    freeaddrinfo(servinfo);
 
-    printf("client: connecting to %s\n", s);
-    freeaddrinfo(servinfo); // all done with this structure
+    char initial_msg[] = "Initial send";
+
+    // initial send
+    if (repeat_send(sockfd, initial_msg, sizeof(initial_msg)) == -1) {
+        perror("send");
+        exit(1);
+    }
 
     interface(sockfd);
+
     close(sockfd);
 
     return 0;

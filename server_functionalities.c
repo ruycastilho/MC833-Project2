@@ -15,7 +15,8 @@
 #include "server_functionalities.h"
 
 struct timeval tv1, tv2;
-char acknowledgement[4];
+struct sockaddr_storage their_addr; // connector's address information
+struct addrinfo *p;
 
 void sigchld_handler(int s) {
     // waitpid() might overwrite errno, so we save and restore it:
@@ -34,69 +35,38 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-
-
 int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
-    char buf_header[HEADER_LENGTH];
-
+    int addr_len = sizeof their_addr;
     int numbytes;
-    if ( recv(sockfd, buf_header, sizeof(buf_header), MSG_WAITALL) == -1 ) {
-        perror("recv");
+    char buf[DATAGRAM_SIZE];
+
+    if ((numbytes = recvfrom(sockfd, buf, sizeof(DATAGRAM_SIZE) , 0,
+        (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+        perror("recvfrom");
         exit(1);
     }
+    printf("ffsdfs\n");
+    memcpy(recv_buffer, buf, recv_buffer_size);
 
-    int size = atoi(buf_header);
+    return numbytes;
 
-    int lenght = 0;
-
-    do {
-        numbytes = recv(sockfd, recv_buffer + lenght, size, 0);
-
-        if (numbytes < 1)
-            return -1;
-        
-        lenght += numbytes;
-        size -= numbytes;
-    } while(lenght < size && lenght < recv_buffer_size);
-    
-    return lenght;
 
 }
 
 int repeat_send(int fd, const void *buffer, int size) {
-    char *string = (char*)malloc(sizeof(char)*(size + HEADER_LENGTH));
-    char *input = (char*) buffer;
+    char datagram[DATAGRAM_SIZE];
+    int numbytes;
+    memcpy(datagram, buffer, size);
 
-    sprintf(string, "%3d", size);
-    memcpy(string+HEADER_LENGTH, buffer, size);
 
-    size += HEADER_LENGTH;
-
-    while (size > 0)
-    {
-        int counter = send(fd, string, size, 0);
-
-        if (counter < 1)
-            return -1;
-
-        string += counter;
-        size -= counter;
+    while ((numbytes = sendto(fd, datagram, sizeof(datagram), 0,
+             p->ai_addr, p->ai_addrlen)) == -1) {
+        perror("talker: sendto");
+        exit(1);
     }
 
+
     return 1;
-}
-
-int wait_for_ack(int fd) {
-
-    // receive an acknowledgement
-    int numbytes = repeat_receive(fd, acknowledgement, sizeof(acknowledgement));
-    if ( numbytes == -1 ) {
-
-        perror("recv");
-        return -1;
-    } 
-    return 1;
-
 }
 
 course* code_search(int fd) {
@@ -137,11 +107,6 @@ course* code_search(int fd) {
                     return NULL;
                 }
 
-                if (wait_for_ack(fd) == -1) {
-                    return NULL;
-                    
-                }
-
                 fclose(courses_f);
                 return existing_course;
             }
@@ -150,11 +115,6 @@ course* code_search(int fd) {
         if (repeat_send(fd, &status, sizeof(int)) == -1) {
             perror("send");
             return NULL;
-        }
-
-        if (wait_for_ack(fd) == -1) {
-            return NULL;
-            
         }
 
         free(existing_course);
@@ -167,11 +127,6 @@ course* code_search(int fd) {
             fclose(courses_f);
             return NULL;
         }
-    }
-
-    if (wait_for_ack(fd) == -1) {
-        return NULL;
-        
     }
 
     if (repeat_send(fd, &status, sizeof(int)) == -1) {
@@ -204,11 +159,6 @@ int ementa(int fd) {
             perror("send");
             free(course_info);
             return -1;
-        }
-
-        if (wait_for_ack(fd) == -1) {
-            return -1;
-            
         }
 
         return 1;
@@ -257,10 +207,6 @@ int todas_infos(int fd) {
             fclose(courses_f);
             return -1;
         }
-        if (wait_for_ack(fd) == -1) {
-            return -1;
-            
-        }
 
         while ( fread(existing_course, sizeof(course), 1, courses_f) ) {
   
@@ -271,21 +217,11 @@ int todas_infos(int fd) {
                 return -1;
             }
 
-            if (wait_for_ack(fd) == -1) {
-                return -1;
-                
-            }
-
             if (repeat_send(fd, existing_course, sizeof(course)) == -1) {
                 perror("send");
                 free(existing_course);
                 fclose(courses_f);
                 return -1;
-            }
-
-            if (wait_for_ack(fd) == -1) {
-                return -1;
-                
             }
 
         }
@@ -296,11 +232,6 @@ int todas_infos(int fd) {
         if (repeat_send(fd, &status, sizeof(status)) == -1) {
             perror("send");
             return -1;
-        }
-
-        if (wait_for_ack(fd) == -1) {
-            return -1;
-            
         }
 
         return 1;
@@ -315,21 +246,11 @@ int todas_infos(int fd) {
         return -1;
     }
 
-    if (wait_for_ack(fd) == -1) {
-        return -1;
-        
-    }
-
     char file_error[] = "\nErro ao abrir arquivo.\n";
 
     if (repeat_send(fd, file_error, sizeof(file_error)) == -1) {
         perror("send");
         return -1;
-    }
-
-    if (wait_for_ack(fd) == -1) {
-        return -1;
-        
     }
 
     return -1;
@@ -388,11 +309,6 @@ int escrever_com(user* prof, int fd) {
                 return -1;
             }
 
-            if (wait_for_ack(fd) == -1) {
-                return -1;
-                
-            }
-
             free(existing_course);
             fclose(courses_f);
 
@@ -409,11 +325,6 @@ int escrever_com(user* prof, int fd) {
             if (repeat_send(fd, &status, sizeof(int)) == -1) {
                 perror("send");
                 return -1;
-            }
-
-            if (wait_for_ack(fd) == -1) {
-                return -1;
-                
             }
 
             char login_error[] = "\nVoce nao tem permissao para alterar comentarios dessa disciplina.\n";
@@ -441,22 +352,12 @@ int escrever_com(user* prof, int fd) {
             perror("send");
             return -1;
         }
-    
-        if (wait_for_ack(fd) == -1) {
-            return -1;
-            
-        }
 
     }
     status = 1;
     if (repeat_send(fd, &status, sizeof(int)) == -1) {
         perror("send");
         return -1;
-    }
-
-    if (wait_for_ack(fd) == -1) {
-        return -1;
-        
     }
 
     char new_comment[COMMENT_LENGTH];
@@ -490,11 +391,6 @@ int escrever_com(user* prof, int fd) {
             return -1;
         }
 
-        if (wait_for_ack(fd) == -1) {
-            return -1;
-            
-        }
-
         return 1;
     }
     else {
@@ -504,11 +400,6 @@ int escrever_com(user* prof, int fd) {
         if (repeat_send(fd, feedback, sizeof(feedback)) == -1) {
             perror("send");
             return -1;
-        }
-
-        if (wait_for_ack(fd) == -1) {
-            return -1;
-            
         }
 
         return -1;
@@ -545,11 +436,6 @@ int send_func_login(int fd) {
     char string[] = "\nBoas vindas ao Sistema de Disciplinas da UNICAMP\nSe deseja logar digite 1. Se deseja sair, digite 2.\n";
     char buffer[MAXDATASIZE];
     int numbytes;
-
-    if (wait_for_ack(fd) == -1) {
-        return -1;
-        
-    }
 
     // send options menu
     if (repeat_send(fd, string, sizeof(string)) == -1) {
@@ -606,11 +492,6 @@ int send_menu(user* user_info, int fd) {
     
     char buffer[MAXDATASIZE];
     int numbytes;
-
-    if (wait_for_ack(fd) == -1) {
-        return -1;
-        
-    }
 
     if (user_info->is_prof) {
         if (repeat_send(fd, string_prof, sizeof(string_prof)) == -1) {
@@ -720,12 +601,6 @@ user* validate_login(int fd) {
     int numbytes;
     user* user_logging = (user*)malloc(sizeof(user)), *existing_user = (user*)malloc(sizeof(user));
 
-
-    if (wait_for_ack(fd) == -1) {
-        return NULL;
-        
-    }
-
     // send 'digite nome e senha em linhas separadas'
     if (repeat_send(fd, string, sizeof(string)) == -1) {
         perror("send");
@@ -760,23 +635,12 @@ user* validate_login(int fd) {
                     return NULL;
                 }
 
-                // receive an acknowledgement from the previous message
-                if (wait_for_ack(fd) == -1) {
-                    return NULL;
-                    
-                }
                 // send the user struct
                 if (repeat_send(fd, existing_user, sizeof(user)) == -1) {
                     perror("send");
                     return NULL;
                 }
 
-                // receive an acknowledgement from the previous message
-                if (wait_for_ack(fd) == -1) {
-                    return NULL;
-                    
-                }
-                
                 return existing_user;
             }
         }
@@ -790,11 +654,7 @@ user* validate_login(int fd) {
             perror("send");
             return NULL;
         }
-        // receive an acknowledgement from the previous message
-        if (wait_for_ack(fd) == -1) {
-            return NULL;
-            
-        }
+
         if (repeat_send(fd, string_erro1, sizeof(string_erro1)) == -1) {
             perror("send");
             return NULL;
@@ -814,11 +674,6 @@ user* validate_login(int fd) {
         perror("send");
         return NULL;
     }
-    // receive an acknowledgement from the previous message
-    if (wait_for_ack(fd) == -1) {
-        return NULL;
-        
-    }
 
     char string_erro2[] = "\nErro na validacao.\n";
 
@@ -831,10 +686,38 @@ user* validate_login(int fd) {
 
 }
 
+void get_send_addr(struct sockaddr_storage *addr, struct addrinfo* p) {
+
+    switch (addr->ss_family)
+    {
+        case AF_INET:
+            p->ai_family = AF_INET;
+            p->ai_addr = (struct sockaddr*) &(((struct sockaddr_in*)addr)->sin_addr);
+            break;
+        case AF_INET6:
+            p->ai_family = AF_INET6;        
+            p->ai_addr = (struct sockaddr*) &(((struct sockaddr_in6*)addr)->sin6_addr);
+
+            break;
+    }
+
+}
+
 void send_func(int fd) {
 
+    char buffer[MAXDATASIZE];
+    int numbytes = repeat_receive(fd, buffer, sizeof(buffer));
+    printf("fdfd\n");
+
+    p = (struct addrinfo*)malloc(sizeof(struct addrinfo));
+
+    get_send_addr(&their_addr, p);
+    p->ai_addrlen = sizeof(p->ai_addr);
+    p->ai_socktype = SOCK_DGRAM;
+    p->ai_protocol = 0;
+
+    user *user_info;
     int login;
-    user* user_info;
 
     do {
         login = send_func_login(fd);
@@ -855,5 +738,6 @@ void send_func(int fd) {
 
     } while (login == 1);
 
+    free(p);
     free(user_info);
 }
