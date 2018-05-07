@@ -15,7 +15,7 @@
 #include <sys/time.h>
 #include "server_functionalities.h"
 
-#define PORT "4001" 
+#define PORT "4950" 
 
 struct timeval tv, tv1, tv2;
 struct addrinfo *p;
@@ -67,6 +67,7 @@ int repeat_send(int fd, const void *buffer, int size) {
     int numbytes;
 
     memcpy(datagram, buffer, size);
+    printf("datagram: '%s'\n", datagram);
 
     while ((numbytes = sendto(fd, datagram, sizeof(datagram), 0,
              p->ai_addr, p->ai_addrlen)) == -1) {
@@ -576,17 +577,20 @@ void interface(int sockfd) {
 
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     int sockfd;
     struct addrinfo hints, *servinfo;
     int rv;
     int numbytes;
 
+    // if (argc != 3) {
+    //     fprintf(stderr,"usage: talker hostname message\n");
+    //     exit(1);
+    // }
+
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_DGRAM;
-
 
     if ((rv = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -609,15 +613,18 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    freeaddrinfo(servinfo);
-
     char initial_msg[] = "Initial send";
 
     // initial send
+    printf("antes do initial send\n");
     if (repeat_send(sockfd, initial_msg, sizeof(initial_msg)) == -1) {
         perror("send");
         exit(1);
     }
+    printf("depois do initial send\n");
+
+    freeaddrinfo(servinfo);
+    printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
 
     interface(sockfd);
 
@@ -625,3 +632,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
