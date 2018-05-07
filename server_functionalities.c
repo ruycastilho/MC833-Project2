@@ -40,12 +40,11 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     int numbytes;
     char buf[DATAGRAM_SIZE];
 
-    if ((numbytes = recvfrom(sockfd, buf, sizeof(DATAGRAM_SIZE) , 0,
+    if ((numbytes = recvfrom(sockfd, buf, DATAGRAM_SIZE , 0,
         (struct sockaddr *)&their_addr, &addr_len)) == -1) {
         perror("recvfrom");
         exit(1);
     }
-    printf("ffsdfs\n");
     memcpy(recv_buffer, buf, recv_buffer_size);
 
     return numbytes;
@@ -706,8 +705,17 @@ void get_send_addr(struct sockaddr_storage *addr, struct addrinfo* p) {
 void send_func(int fd) {
 
     char buffer[MAXDATASIZE];
+    // int numbytes;
+
+    printf("antes do initial recv\n");
+    // socklen_t addr_len = sizeof their_addr;
     int numbytes = repeat_receive(fd, buffer, sizeof(buffer));
-    printf("fdfd\n");
+    // if ((numbytes = recvfrom(fd, buffer, sizeof(buffer), 0,
+    //     (struct sockaddr *)&their_addr, &addr_len)) == -1) {
+    //     perror("recvfrom");
+    //     exit(1);
+    // }
+    printf("depois do initial recv. Received: '%s'\n", buffer);
 
     p = (struct addrinfo*)malloc(sizeof(struct addrinfo));
 
