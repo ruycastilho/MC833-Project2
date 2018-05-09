@@ -73,7 +73,6 @@ int main(int argc, char *argv[])
 
     printf("client: sent %d bytes to %s\n", numbytes, argv[1]);
 
-
     // adicionando recv
     printf("client: waiting to recvfrom...\n");
 
@@ -89,7 +88,7 @@ int main(int argc, char *argv[])
             get_in_addr((struct sockaddr *)&their_addr),
             s, sizeof s));
     printf("listener: packet is %d bytes long\n", numbytes);
-    buf[numbytes] = '\0';
+    // buf[numbytes] = '\0';
     printf("client: packet contains \"%s\"\n", buf);
     // recv adicionado
 

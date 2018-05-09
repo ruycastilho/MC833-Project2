@@ -38,14 +38,17 @@ void *get_in_addr(struct sockaddr *sa) {
 int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     int addr_len = sizeof their_addr;
     int numbytes;
-    char buf[DATAGRAM_SIZE];
+    char datagram[DATAGRAM_SIZE];
 
-    if ((numbytes = recvfrom(sockfd, buf, DATAGRAM_SIZE , 0,
+    if ((numbytes = recvfrom(sockfd, &datagram, DATAGRAM_SIZE , 0,
         (struct sockaddr *)&their_addr, &addr_len)) == -1) {
         perror("recvfrom");
         exit(1);
     }
-    memcpy(recv_buffer, buf, recv_buffer_size);
+
+    printf("datagram'%s'\n\n", datagram);
+
+    memcpy(recv_buffer, datagram, recv_buffer_size);
 
     return numbytes;
 
@@ -55,11 +58,13 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
 int repeat_send(int fd, const void *buffer, int size) {
     char datagram[DATAGRAM_SIZE];
     int numbytes;
+    // printf("recebido'%s'\n\n", ((char*)buffer));
+
     memcpy(datagram, buffer, size);
+    // printf("datagram'%s'\n\n", datagram);
 
-
-    while ((numbytes = sendto(fd, datagram, sizeof(datagram), 0,
-             p->ai_addr, p->ai_addrlen)) == -1) {
+    if ((numbytes = sendto(fd, &datagram, sizeof(datagram), 0,
+             (struct sockaddr *)&their_addr,sizeof(their_addr))) == -1) {
         perror("talker: sendto");
         exit(1);
     }
@@ -85,7 +90,7 @@ course* code_search(int fd) {
         perror("recv");
         return NULL;
     }
-    buffer[numbytes] = '\0';
+    // buffer[numbytes] = '\0';
 
     // start the timer
     gettimeofday(&tv1, NULL);
@@ -273,7 +278,7 @@ int escrever_com(user* prof, int fd) {
         perror("recv");
         return -1;
     }
-    buffer[numbytes] = '\0';
+    // buffer[numbytes] = '\0';
 
     // start the timer
     gettimeofday(&tv1, NULL);
@@ -374,7 +379,7 @@ int escrever_com(user* prof, int fd) {
         perror("recv");
         return -1;
     }
-    buffer[numbytes] = '\0';
+    // buffer[numbytes] = '\0';
 
     strcpy(existing_course->comment, new_comment);
     fwrite(existing_course, sizeof(course), 1, courses_f);
@@ -449,7 +454,7 @@ int send_func_login(int fd) {
         perror("recv");
         return -1;
     }
-    buffer[numbytes] = '\0';
+    // buffer[numbytes] = '\0';
 
     char erro[] = "\nPor favor, digite 1 ou 2.\n";
 
@@ -464,7 +469,7 @@ int send_func_login(int fd) {
             perror("recv");
             return -1;
         }
-        buffer[numbytes] = '\0';
+        // buffer[numbytes] = '\0';
 
     }
 
@@ -513,7 +518,7 @@ int send_menu(user* user_info, int fd) {
         perror("recv");
         return -1;
     }
-    buffer[numbytes] = '\0';
+    // buffer[numbytes] = '\0';
 
     char error_prof[] = "\nPor favor, digite números de 1 a 7.\n";
     char error_stud[] = "\nPor favor, digite números de 1 a 6.\n";
@@ -532,7 +537,7 @@ int send_menu(user* user_info, int fd) {
                 perror("recv");
                 return -1;
             }
-            buffer[numbytes] = '\0';
+            // buffer[numbytes] = '\0';
 
         }
     }
@@ -550,7 +555,7 @@ int send_menu(user* user_info, int fd) {
                 perror("recv");
                 return -1;
             }
-            buffer[numbytes] = '\0';
+            // buffer[numbytes] = '\0';
 
         }
 
@@ -705,16 +710,10 @@ void get_send_addr(struct sockaddr_storage *addr, struct addrinfo* p) {
 void send_func(int fd) {
 
     char buffer[MAXDATASIZE];
-    // int numbytes;
 
     printf("antes do initial recv\n");
-    // socklen_t addr_len = sizeof their_addr;
     int numbytes = repeat_receive(fd, buffer, sizeof(buffer));
-    // if ((numbytes = recvfrom(fd, buffer, sizeof(buffer), 0,
-    //     (struct sockaddr *)&their_addr, &addr_len)) == -1) {
-    //     perror("recvfrom");
-    //     exit(1);
-    // }
+
     printf("depois do initial recv. Received: '%s'\n", buffer);
 
     p = (struct addrinfo*)malloc(sizeof(struct addrinfo));

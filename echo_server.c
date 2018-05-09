@@ -16,7 +16,7 @@
 #include <string.h>
 #include "server_functionalities.h"
 
-#define PORT "4950" // the port users will be connecting to
+#define PORT "8000" // the port users will be connecting to
 
 int main(void) {
     int sockfd;

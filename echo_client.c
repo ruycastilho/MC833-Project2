@@ -15,7 +15,7 @@
 #include <sys/time.h>
 #include "server_functionalities.h"
 
-#define PORT "4950" 
+#define PORT "8000" 
 
 struct timeval tv, tv1, tv2;
 struct addrinfo *p;
@@ -30,9 +30,9 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
-    int addr_len = sizeof their_addr;
+    int addr_len = sizeof(their_addr);
     int numbytes, n, rv;
-    char buf[DATAGRAM_SIZE];
+    char datagram[DATAGRAM_SIZE];
     fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(sockfd, &readfds);
@@ -42,21 +42,24 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     tv.tv_usec = TV_USECONDS;
 
 
-    do {
-        rv = select(n, &readfds, NULL, NULL, &tv);
-        if (rv == -1) {
-            perror("select"); // error occurred in select()
-        }
-    } while (rv != -1 && rv != 0);
+
+    rv = select(n, &readfds, NULL, NULL, &tv);
+    if (rv == -1) {
+        perror("select"); // error occurred in select()
+    }
+    // if (rv == 0) {
+    //     voltar pro inicio
+    // }
 
 
-    if ((numbytes = recvfrom(sockfd, buf, sizeof(DATAGRAM_SIZE) , 0,
+    if ((numbytes = recvfrom(sockfd, &datagram, sizeof(datagram) , 0,
         (struct sockaddr *)&their_addr, &addr_len)) == -1) {
         perror("recvfrom");
         exit(1);
     }
+    // printf("recebido'%s'\n\n", datagram);
 
-    memcpy(recv_buffer, buf, recv_buffer_size);
+    memcpy(recv_buffer, datagram, recv_buffer_size);
 
     return numbytes;
 
@@ -67,9 +70,10 @@ int repeat_send(int fd, const void *buffer, int size) {
     int numbytes;
 
     memcpy(datagram, buffer, size);
-    printf("datagram: '%s'\n", datagram);
+    // printf("datagram: '%s'\n", datagram);
+    // printf("size'%d'\n", size);
 
-    while ((numbytes = sendto(fd, datagram, sizeof(datagram), 0,
+    if ((numbytes = sendto(fd, &datagram, sizeof(datagram), 0,
              p->ai_addr, p->ai_addrlen)) == -1) {
         perror("talker: sendto");
         exit(1);
@@ -91,7 +95,7 @@ void choose_opt(int sockfd) {
             perror("recv");
             exit(1);
         }
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
         printf("Opcao: ");
@@ -109,7 +113,7 @@ void choose_opt(int sockfd) {
             perror("recv");
             exit(1);
         }
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
     } while (strcmp(buf, "\nPor favor, digite 1 ou 2.\n") == 0);
@@ -126,7 +130,7 @@ user* input_user_and_pass (int sockfd) {
         exit(1);
 
     }
-    buf[numbytes] = '\0';
+    // buf[numbytes] = '\0';
     printf("%s",buf);
 
     printf("Nome: ");
@@ -178,7 +182,7 @@ user* input_user_and_pass (int sockfd) {
 
         }
     
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
     }
@@ -197,7 +201,7 @@ int interface_codigo(int sockfd) {
         perror("recv");
         exit(1);
     }
-    buf[numbytes] = '\0';
+    // buf[numbytes] = '\0';
     printf("%s", buf);
 
     printf("Codigo: ");
@@ -279,7 +283,7 @@ void interface_infos(int sockfd) {
             exit(1);
         }
 
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
     }
@@ -342,7 +346,7 @@ void interface_todas_infos(int sockfd) {
             exit(1);
         }
 
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
     }
@@ -403,7 +407,7 @@ void interface_cod_titulos(int sockfd) {
             exit(1);
         }
 
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
 
@@ -446,7 +450,7 @@ void interface_esc_com(int sockfd) {
             exit(1);
         }
 
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
         char comment[COMMENT_LENGTH];
@@ -473,7 +477,7 @@ void interface_esc_com(int sockfd) {
 
         gettimeofday(&tv2, NULL);
 
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
 
         printf("Tempo total da operação: %.2f usecs\n", (float)(tv2.tv_usec - tv1.tv_usec));
@@ -486,7 +490,7 @@ void interface_esc_com(int sockfd) {
             exit(1);
         }
 
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
         
     }
@@ -520,7 +524,7 @@ void interface(int sockfd) {
             free(client);   
             exit(1);
         }
-        buf[numbytes] = '\0';
+        // buf[numbytes] = '\0';
         printf("%s",buf);
         
         printf("Opcao: ");
