@@ -40,13 +40,13 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     int numbytes;
     char datagram[DATAGRAM_SIZE];
 
-    if ((numbytes = recvfrom(sockfd, &datagram, DATAGRAM_SIZE , 0,
+    if ((numbytes = recvfrom(sockfd, &datagram, sizeof(datagram) , 0,
         (struct sockaddr *)&their_addr, &addr_len)) == -1) {
         perror("recvfrom");
         exit(1);
     }
 
-    printf("datagram'%s'\n\n", datagram);
+    // printf("datagram'%s'\n\n", datagram);
 
     memcpy(recv_buffer, datagram, recv_buffer_size);
 
@@ -711,10 +711,10 @@ void send_func(int fd) {
 
     char buffer[MAXDATASIZE];
 
-    printf("antes do initial recv\n");
+    // printf("antes do initial recv\n");
     int numbytes = repeat_receive(fd, buffer, sizeof(buffer));
 
-    printf("depois do initial recv. Received: '%s'\n", buffer);
+    // printf("depois do initial recv. Received: '%s'\n", buffer);
 
     p = (struct addrinfo*)malloc(sizeof(struct addrinfo));
 

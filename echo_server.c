@@ -84,11 +84,3 @@ int main(void) {
 
     return 0;
 }
-
-
-
-
-
-
-
-// CUIDAR DE BUF OVERFLOW E ERROS DE RETORNO

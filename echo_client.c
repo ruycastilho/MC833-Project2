@@ -47,9 +47,10 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     if (rv == -1) {
         perror("select"); // error occurred in select()
     }
-    // if (rv == 0) {
-    //     voltar pro inicio
-    // }
+    if (rv == 0) {
+        printf("Timeout Ocorreu - Finalizando execução!\n");
+        exit(1);
+    }
 
 
     if ((numbytes = recvfrom(sockfd, &datagram, sizeof(datagram) , 0,
@@ -70,13 +71,13 @@ int repeat_send(int fd, const void *buffer, int size) {
     int numbytes;
 
     memcpy(datagram, buffer, size);
-    // printf("datagram: '%s'\n", datagram);
+    // printf("datagram: '%s''%s'\n", ((user*)buffer)->name, ((user*)buffer)->pwd);
     // printf("size'%d'\n", size);
 
     if ((numbytes = sendto(fd, &datagram, sizeof(datagram), 0,
              p->ai_addr, p->ai_addrlen)) == -1) {
         perror("talker: sendto");
-        exit(1);
+        exit(1);    
     }
 
 
@@ -620,18 +621,18 @@ int main(int argc, char *argv[]) {
     char initial_msg[] = "Initial send";
 
     // initial send
-    printf("antes do initial send\n");
+    // printf("antes do initial send\n");
     if (repeat_send(sockfd, initial_msg, sizeof(initial_msg)) == -1) {
         perror("send");
         exit(1);
     }
-    printf("depois do initial send\n");
+    // printf("depois do initial send\n");
 
-    freeaddrinfo(servinfo);
-    printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
+    // printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
 
     interface(sockfd);
 
+    freeaddrinfo(servinfo);
     close(sockfd);
 
     return 0;
