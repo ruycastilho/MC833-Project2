@@ -618,7 +618,7 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    char initial_msg[] = "Initial send";
+    char initial_msg[] = "Initial Request"
 
     // initial send
     // printf("antes do initial send\n");
@@ -626,8 +626,8 @@ int main(int argc, char *argv[]) {
         perror("send");
         exit(1);
     }
-    // printf("depois do initial send\n");
 
+    // printf("depois do initial send\n");
     // printf("talker: sent %d bytes to %s\n", numbytes, argv[1]);
 
     interface(sockfd);

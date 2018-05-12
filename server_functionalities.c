@@ -17,6 +17,7 @@
 struct timeval tv1, tv2;
 struct sockaddr_storage their_addr; // connector's address information
 struct addrinfo *p;
+// bool isLoggedIn = false;
 
 void sigchld_handler(int s) {
     // waitpid() might overwrite errno, so we save and restore it:
@@ -49,6 +50,11 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     // printf("datagram'%s'\n\n", datagram);
 
     memcpy(recv_buffer, datagram, recv_buffer_size);
+
+    // if (isLoggedIn && recv_buffer_size == sizeof(initial_msg) && strcmp(initial_msg, recv_buffer)) {
+    //     // return -1;
+    // }
+
 
     return numbytes;
 
@@ -645,6 +651,7 @@ user* validate_login(int fd) {
                     return NULL;
                 }
 
+                // isLoggedIn = true;
                 return existing_user;
             }
         }

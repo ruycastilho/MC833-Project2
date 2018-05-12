@@ -21,8 +21,10 @@
 #define HEADER_LENGTH 3
 #define LOST_DATA_INTERVAL 100 // in ms
 #define DATAGRAM_SIZE 64000
-#define TV_SECONDS 0
+#define TV_SECONDS 1
 #define TV_USECONDS 1000
+
+
 
 typedef struct {
 
