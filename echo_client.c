@@ -308,51 +308,32 @@ void interface_todas_infos(int sockfd) {
 
     if (status) {
 
-        // // receive the status
-        // numbytes = repeat_receive(sockfd, &status, sizeof(int));
-        // if ( numbytes == -1) {
-        //     perror("recv");
-        //     exit(1);
-        // } 
-
-        void *buffer = (void*)malloc(sizeof(DATAGRAM_SIZE));
-        int index = 0;
-
-        numbytes = repeat_receive(sockfd, buffer, sizeof(buffer));
-        if (numbytes == -1) {
+        // receive the status
+        numbytes = repeat_receive(sockfd, &status, sizeof(int));
+        if ( numbytes == -1) {
             perror("recv");
             exit(1);
         } 
 
-        memcpy(&status, buffer, sizeof(status));
-        index += sizeof(status);
-        printf("STATUS'%d'\n", status);
-
         while (status) {
-            memcpy(received_course, buffer+index, sizeof(course));
-            index += sizeof(course);
 
-            // numbytes = repeat_receive(sockfd, received_course, sizeof(course));
-            // if (numbytes == -1) {
-            //     perror("recv");
-            //     exit(1);
-            // } 
+            numbytes = repeat_receive(sockfd, received_course, sizeof(course));
+            if (numbytes == -1) {
+                perror("recv");
+                exit(1);
+            } 
 
             printf("\nCodigo: %s\nTitulo: %s\nInstituto: %s\nSala: %s\nHorario: %s\nEmenta: %s\nProfessor: %s\nComentario: %s\n", 
                     received_course->code, received_course->name, received_course->institute,
                     received_course->room, received_course->schedule, received_course->description,
                     received_course->professor, received_course->comment);
 
-            memcpy(&status, buffer+index, sizeof(status));
-            index += sizeof(status);
-        printf("STATUS'%d'\n", status);
-
-            // // receive the status
-            // numbytes = repeat_receive(sockfd, &status, sizeof(int));
-            // if (numbytes == -1) {
-            //     perror("recv");
-            //     exit(1);
-            // } 
+            // receive the status
+            numbytes = repeat_receive(sockfd, &status, sizeof(int));
+            if (numbytes == -1) {
+                perror("recv");
+                exit(1);
+            } 
             // printf("status:'%d'\n", status);
             
         }
