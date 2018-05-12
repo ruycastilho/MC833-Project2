@@ -15,7 +15,7 @@
 #include <sys/time.h>
 #include "server_functionalities.h"
 
-#define PORT "8000" 
+#define PORT "8001" 
 
 struct timeval tv, tv1, tv2;
 struct addrinfo *p;
@@ -41,8 +41,6 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
     tv.tv_sec = TV_SECONDS;
     tv.tv_usec = TV_USECONDS;
 
-
-
     rv = select(n, &readfds, NULL, NULL, &tv);
     if (rv == -1) {
         perror("select"); // error occurred in select()
@@ -58,9 +56,11 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
         perror("recvfrom");
         exit(1);
     }
-    // printf("recebido'%s'\n\n", datagram);
+    // printf("recebido string'%s'\n\n", datagram);
+
 
     memcpy(recv_buffer, datagram, recv_buffer_size);
+    // printf("recebido int'%d'\n\n", *(int*) recv_buffer);
 
     return numbytes;
 
@@ -89,15 +89,17 @@ void choose_opt(int sockfd) {
     int numbytes;
     char choice[2];
 
+    // receive login menu
+    numbytes = repeat_receive(sockfd, buf, sizeof(buf));
+    if ( numbytes == -1) {
+        perror("recv");
+        exit(1);
+    }
+    // buf[numbytes] = '\0';
+    printf("%s",buf);
+
+
     do {
-        // receive login menu
-        numbytes = repeat_receive(sockfd, buf, sizeof(buf));
-        if ( numbytes == -1) {
-            perror("recv");
-            exit(1);
-        }
-        // buf[numbytes] = '\0';
-        printf("%s",buf);
 
         printf("Opcao: ");
         scanf("%s", choice);
@@ -306,32 +308,52 @@ void interface_todas_infos(int sockfd) {
 
     if (status) {
 
-        // receive the status
-        numbytes = repeat_receive(sockfd, &status, sizeof(int));
-        if ( numbytes == -1) {
+        // // receive the status
+        // numbytes = repeat_receive(sockfd, &status, sizeof(int));
+        // if ( numbytes == -1) {
+        //     perror("recv");
+        //     exit(1);
+        // } 
+
+        void *buffer = (void*)malloc(sizeof(DATAGRAM_SIZE));
+        int index = 0;
+
+        numbytes = repeat_receive(sockfd, buffer, sizeof(buffer));
+        if (numbytes == -1) {
             perror("recv");
             exit(1);
         } 
 
-        while (status) {
+        memcpy(&status, buffer, sizeof(status));
+        index += sizeof(status);
+        printf("STATUS'%d'\n", status);
 
-            numbytes = repeat_receive(sockfd, received_course, sizeof(course));
-            if (numbytes == -1) {
-                perror("recv");
-                exit(1);
-            } 
+        while (status) {
+            memcpy(received_course, buffer+index, sizeof(course));
+            index += sizeof(course);
+
+            // numbytes = repeat_receive(sockfd, received_course, sizeof(course));
+            // if (numbytes == -1) {
+            //     perror("recv");
+            //     exit(1);
+            // } 
 
             printf("\nCodigo: %s\nTitulo: %s\nInstituto: %s\nSala: %s\nHorario: %s\nEmenta: %s\nProfessor: %s\nComentario: %s\n", 
                     received_course->code, received_course->name, received_course->institute,
                     received_course->room, received_course->schedule, received_course->description,
                     received_course->professor, received_course->comment);
 
-            // receive the status
-            numbytes = repeat_receive(sockfd, &status, sizeof(int));
-            if (numbytes == -1) {
-                perror("recv");
-                exit(1);
-            } 
+            memcpy(&status, buffer+index, sizeof(status));
+            index += sizeof(status);
+        printf("STATUS'%d'\n", status);
+
+            // // receive the status
+            // numbytes = repeat_receive(sockfd, &status, sizeof(int));
+            // if (numbytes == -1) {
+            //     perror("recv");
+            //     exit(1);
+            // } 
+            // printf("status:'%d'\n", status);
             
         }
         gettimeofday(&tv2, NULL);
@@ -618,7 +640,7 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    char initial_msg[] = "Initial Request"
+    char initial_msg[] = "Initial Request";
 
     // initial send
     // printf("antes do initial send\n");

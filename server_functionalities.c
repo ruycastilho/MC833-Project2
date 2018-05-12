@@ -64,10 +64,11 @@ int repeat_receive(int sockfd, void * recv_buffer, int recv_buffer_size) {
 int repeat_send(int fd, const void *buffer, int size) {
     char datagram[DATAGRAM_SIZE];
     int numbytes;
-    // printf("recebido'%s'\n\n", ((char*)buffer));
+
+    // printf("enviado string'%s'\n\n", ((char*)buffer));
+    // printf("enviado int'%d'\n\n", *((int*)buffer));
 
     memcpy(datagram, buffer, size);
-    // printf("datagram'%s'\n\n", datagram);
 
     if ((numbytes = sendto(fd, &datagram, sizeof(datagram), 0,
              (struct sockaddr *)&their_addr,sizeof(their_addr))) == -1) {
@@ -218,31 +219,47 @@ int todas_infos(int fd) {
             return -1;
         }
 
+        void *buffer = (void*)malloc(sizeof(DATAGRAM_SIZE));
+
+        int index=0;
         while ( fread(existing_course, sizeof(course), 1, courses_f) ) {
-  
-            if (repeat_send(fd, &status, sizeof(status)) == -1) {
-                perror("send");
-                free(existing_course);
-                fclose(courses_f);
-                return -1;
-            }
+            memcpy(buffer+index, &status, sizeof(status));
+            index += sizeof(status);
+            memcpy(buffer+index, existing_course, sizeof(course));
+            index += sizeof(course);
 
-            if (repeat_send(fd, existing_course, sizeof(course)) == -1) {
-                perror("send");
-                free(existing_course);
-                fclose(courses_f);
-                return -1;
-            }
+            // if (repeat_send(fd, &status, sizeof(status)) == -1) {
+            //     perror("send");
+            //     free(existing_course);
+            //     fclose(courses_f);
+            //     return -1;
+            // }
 
+            // if (repeat_send(fd, existing_course, sizeof(course)) == -1) {
+            //     perror("send");
+            //     free(existing_course);
+            //     fclose(courses_f);
+            //     return -1;
+            // }
         }
+
+        status = 0;
+        memcpy(buffer+index, &status, sizeof(status));
+
+        if (repeat_send(fd, buffer, sizeof(buffer)) == -1) {
+            perror("send");
+            free(existing_course);
+            fclose(courses_f);
+            return -1;
+        }
+
 
         free(existing_course);
         fclose(courses_f);
-        status = 0;
-        if (repeat_send(fd, &status, sizeof(status)) == -1) {
-            perror("send");
-            return -1;
-        }
+        // if (repeat_send(fd, &status, sizeof(status)) == -1) {
+        //     perror("send");
+        //     return -1;
+        // }
 
         return 1;
 
